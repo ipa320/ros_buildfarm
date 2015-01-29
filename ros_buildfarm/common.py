@@ -128,6 +128,14 @@ def get_devel_view_name(rosdistro_name, source_build_name, pull_request=False):
     return name
 
 
+def get_doc_view_name(rosdistro_name, doc_build_name):
+    name = '%sdoc' % rosdistro_name[0].upper()
+    short_doc_build_name = get_short_build_name(doc_build_name)
+    if short_doc_build_name:
+        name += '_%s' % short_doc_build_name
+    return name
+
+
 def get_release_job_prefix(rosdistro_name, release_build_name=None):
     prefix = '%srel' % rosdistro_name[0].upper()
     if release_build_name is not None:
