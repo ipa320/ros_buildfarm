@@ -101,7 +101,7 @@
         'echo "# BEGIN SECTION: Generate Dockerfile - doc task"',
         'export TZ="%s"' % timezone,
         'export PYTHONPATH=$WORKSPACE/ros_buildfarm:$PYTHONPATH',
-        'if [ "$force" == "true" ]; then FORCE_FLAG="--force"; fi',
+        'if [ "$force" = "true" ]; then FORCE_FLAG="--force"; fi',
         'python3 -u $WORKSPACE/ros_buildfarm/scripts/doc/run_doc_job.py' +
         ' --rosdistro-index-url ' + rosdistro_index_url +
         ' ' + rosdistro_name +

@@ -153,8 +153,7 @@ def main(argv=sys.argv[1:]):
                 d.name for d in depends if d.name in valid_package_names]))
 
             rosdoc_tag_index.set_forward_deps(pkg.name, ros_dependency_names)
-            print(pkg.name, 'is meta', pkg.is_metapackage)
-            if not pkg.is_metapackage:
+            if not pkg.is_metapackage():
                 ros_dependency_names = None
             rosdoc_tag_index.set_metapackage_deps(
                 pkg.name, ros_dependency_names)
