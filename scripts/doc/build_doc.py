@@ -4,13 +4,13 @@ import argparse
 import os
 import subprocess
 import sys
+import yaml
 
 from ros_buildfarm.argument import add_argument_output_dir
 from ros_buildfarm.catkin_workspace import call_catkin_make_isolated
 from ros_buildfarm.catkin_workspace import clean_workspace
 from ros_buildfarm.catkin_workspace import ensure_workspace_exists
 from ros_buildfarm.common import Scope
-from ros_buildfarm.rosdoc_tag_index import build_tagfile
 
 
 def main(argv=sys.argv[1:]):
@@ -94,6 +94,19 @@ def main(argv=sys.argv[1:]):
                 ], stderr=subprocess.STDOUT, cwd=pkg_path)
             if pkg_rc:
                 rc = pkg_rc
+
+            # merge manifest.yaml files
+            rosdoc_manifest_yaml_file = os.path.join(
+                pkg_doc_path, 'manifest.yaml')
+            job_manifest_yaml_file = os.path.join(
+                args.output_dir, 'manifests', pkg_name, 'manifest.yaml')
+            with open(rosdoc_manifest_yaml_file, 'r') as h:
+                rosdoc_data = yaml.load(h)
+            with open(job_manifest_yaml_file, 'r') as h:
+                job_data = yaml.load(h)
+            rosdoc_data.update(job_data)
+            with open(rosdoc_manifest_yaml_file, 'w') as h:
+                yaml.safe_dump(rosdoc_data, h, default_flow_style=False)
 
     return rc
 

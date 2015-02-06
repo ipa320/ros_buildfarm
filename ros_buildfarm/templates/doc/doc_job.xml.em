@@ -53,7 +53,7 @@
     spec='H 3 H/3 * *',
 ))@
   </triggers>
-  <concurrentBuild>true</concurrentBuild>
+  <concurrentBuild>false</concurrentBuild>
   <builders>
 @(SNIPPET(
     'builder_shell_docker-info',

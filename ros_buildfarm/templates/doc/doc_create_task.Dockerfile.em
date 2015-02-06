@@ -48,6 +48,7 @@ cmds = [
     'PYTHONPATH=/tmp/ros_buildfarm:$PYTHONPATH python3 -u' + \
     ' /tmp/ros_buildfarm/scripts/doc/create_doc_task_generator.py' + \
     ' --rosdistro-name ' + rosdistro_name + \
+    ' ' + doc_build_name + \
     ' --workspace-root /tmp/catkin_workspace' + \
     ' --rosdoc-lite-dir /tmp/rosdoc_tag_index' + \
     ' --rosdoc-tag-index-dir /tmp/rosdoc_tag_index' + \

@@ -77,13 +77,10 @@ class RosdocTagIndex(object):
         import yaml
         folder_dict = {}
         path = os.path.join(self.path, self.rosdistro_name, folder_name)
-        print('read_folder()', path)
         if os.path.exists(path):
             for key in os.listdir(path):
-                print('-', key)
                 with open(os.path.join(path, key), 'r') as f:
                     folder_dict[key] = yaml.load(f)
-                    print(' ', folder_dict[key])
         return folder_dict
 
     # write a dict to a file with an entry per key
@@ -142,7 +139,9 @@ class RosdocTagIndex(object):
     def has_reverse_deps(self, key):
         return key in self.reverse_deps
 
-    def get_reverse_deps(self, key):
+    def get_reverse_deps(self, key, default=None):
+        if key not in self.reverse_deps:
+            return default
         return self.reverse_deps[key]
 
     def has_forward_deps(self, key):
