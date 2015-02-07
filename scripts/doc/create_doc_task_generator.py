@@ -33,7 +33,7 @@ from ros_buildfarm.common import get_user_id
 from ros_buildfarm.common import Scope
 from ros_buildfarm.doc_job import get_doc_job_name
 from ros_buildfarm.git import get_hash
-from ros_buildfarm.rosdoc_tag_index import RosdocTagIndex
+from ros_buildfarm.rosdoc_index import RosdocIndex
 from ros_buildfarm.templates import create_dockerfile
 from ros_buildfarm.templates import expand_template
 
@@ -56,9 +56,9 @@ def main(argv=sys.argv[1:]):
         required=True,
         help='The root path of the rosdoc_lite repository')
     parser.add_argument(
-        '--rosdoc-tag-index-dir',
+        '--rosdoc-index-dir',
         required=True,
-        help='The root path of the rosdoc_tag_index repository')
+        help='The root path of the rosdoc_index folder')
     add_argument_repository_name(parser)
     parser.add_argument(
         '--os-name',
@@ -98,8 +98,8 @@ def main(argv=sys.argv[1:]):
             print('Package maintainer emails: %s' %
                   ' '.join(sorted(maintainer_emails)))
 
-    rosdoc_tag_index = RosdocTagIndex(
-        args.rosdistro_name, args.rosdoc_tag_index_dir)
+    rosdoc_index = RosdocIndex(
+        [os.path.join(args.rosdoc_index_dir, args.rosdistro_name)])
 
     with Scope('SUBSECTION', 'determine need to run documentation generation'):
         # compare hashes to determine if documentation needs to be regenerated
@@ -111,8 +111,7 @@ def main(argv=sys.argv[1:]):
         # TODO handle non-git repositories
         current_hashes[args.repository_name] = get_hash(repo_dir)
         print('Current repository hashes: %s' % current_hashes)
-        tag_index_hashes = rosdoc_tag_index.get_rosinstall_hashes(
-            args.repository_name, {})
+        tag_index_hashes = rosdoc_index.hashes.get(args.repository_name, {})
         print('Stored repository hashes: %s' % tag_index_hashes)
         skip_doc_generation = current_hashes == tag_index_hashes
 
@@ -135,9 +134,8 @@ def main(argv=sys.argv[1:]):
         print('The source repository and/or a tooling repository has changed')
 
     print('Running generation of documentation')
-    rosdoc_tag_index.set_rosinstall_hashes(
-        args.repository_name, current_hashes)
-    rosdoc_tag_index.write_data(['rosinstall_hashes'])
+    rosdoc_index.hashes[args.repository_name] = current_hashes
+    rosdoc_index.write_modified_data(args.output_dir, ['hashes'])
 
     # create stamp files
     print('Creating marker files to identify that documentation is ' +
@@ -151,18 +149,19 @@ def main(argv=sys.argv[1:]):
         set(pkg_names) | set(dist_file.release_packages.keys())
 
     # update package deps and metapackage deps
-    with Scope('SUBSECTION', 'updated rosdoc_tag_index information'):
+    with Scope('SUBSECTION', 'updated rosdoc_index information'):
         for pkg in pkgs.values():
             depends = _get_build_run_doc_dependencies(pkg)
             ros_dependency_names = sorted(set([
                 d.name for d in depends if d.name in valid_package_names]))
 
-            rosdoc_tag_index.set_forward_deps(pkg.name, ros_dependency_names)
+            rosdoc_index.set_forward_deps(pkg.name, ros_dependency_names)
             if not pkg.is_metapackage():
                 ros_dependency_names = None
-            rosdoc_tag_index.set_metapackage_deps(
+            rosdoc_index.set_metapackage_deps(
                 pkg.name, ros_dependency_names)
-    rosdoc_tag_index.write_data(['deps', 'metapackages'])
+        rosdoc_index.write_modified_data(
+            args.output_dir, ['deps', 'metapackage_deps'])
 
     # generate changelog html from rst
     package_names_with_changelogs = set([])
@@ -195,41 +194,53 @@ def main(argv=sys.argv[1:]):
                         pkg_changelog_doc_path, 'changelog.html'), 'w') as h:
                     h.write(html_code)
 
+    # create location files
+    with Scope('SUBSECTION', 'create location files'):
+        for pkg in pkgs.values():
+            data = {
+                'docs_url': '../../../api/%s/html' % pkg.name,
+                'location': 'file://%s' % os.path.join(
+                    args.output_dir, 'symbols', '%s.tag' % pkg.name),
+                'package': pkg.name,
+            }
+            rosdoc_index.locations[pkg.name] = [data]
+        # do not write these local locations
+
     # create rosdoc tag list files
     with Scope('SUBSECTION', 'create rosdoc tag list files'):
         for pkg in pkgs.values():
-            dep_names = rosdoc_tag_index.get_recursive_dependencies(pkg.name)
+            dst = os.path.join(
+                args.output_dir, 'rosdoc_tags', pkg.name, 'rosdoc_tags.yaml')
+            print("Generating 'rosdoc_tags.yaml' file for package '%s'" %
+                  pkg.name)
+
+            dep_names = rosdoc_index.get_recursive_dependencies(pkg.name)
             # make sure that we don't pass our own tagfile to ourself
             # bad things happen when we do this
             assert pkg.name not in dep_names
-            tags = []
+            locations = []
             for dep_name in sorted(dep_names):
-                if rosdoc_tag_index.has_tags(dep_name):
-                    dep_tags = rosdoc_tag_index.get_tags(dep_name)
-                    if dep_tags:
-                        for dep_tag in dep_tags:
-                            assert dep_tag['package'] == dep_name
-                            # update tag information to point to local location
-                            tag = copy.deepcopy(dep_tag)
-                            tag['location'] = 'file://%s' % os.path.join(
-                                args.output_dir, 'tags', tag['location'])
-                            tags.append(tag)
-                    else:
-                        tag = {
-                            'docs_url': '../../%s/html' % dep_name,
-                            'location': 'file://%s' % os.path.join(
-                                args.output_dir, args.rosdistro_name, 'tags',
-                                '%s.tag' % dep_name),
-                            'package': dep_name}
-                        tags.append(tag)
+                if dep_name not in rosdoc_index.locations:
+                    print("- skipping not existing location file of " +
+                          "dependency '%s'" % dep_name)
+                    continue
+                dep_locations = rosdoc_index.locations[dep_name]
+                if dep_locations:
+                    for dep_location in dep_locations:
+                        assert dep_location['package'] == dep_name
+                        # update tag information to point to local location
+                        location = copy.deepcopy(dep_location)
+                        if not location['location'].startswith('file://'):
+                            location['location'] = 'file://%s' % os.path.join(
+                                args.rosdoc_index_dir, 'locations',
+                                location['location'])
+                        locations.append(location)
 
-            dst = os.path.join(
-                args.output_dir, 'rosdoc_tags', pkg.name, 'rosdoc_tags.yaml')
             dst_dir = os.path.dirname(dst)
             if not os.path.exists(dst_dir):
                 os.makedirs(dst_dir)
             with open(dst, 'w') as h:
-                yaml.dump(tags, h)
+                yaml.dump(locations, h)
 
     # create manifest.yaml files from repository / package meta information
     # will be merged with the manifest.yaml file generated by rosdoc_lite later
@@ -246,13 +257,11 @@ def main(argv=sys.argv[1:]):
             data['repo_name'] = args.repository_name
             data['timestamp'] = time.time()
 
-            data['depends'] = rosdoc_tag_index.get_forward_deps(pkg.name, [])
-            data['depends_on'] = rosdoc_tag_index.get_reverse_deps(
-                pkg.name, [])
+            data['depends'] = rosdoc_index.forward_deps.get(pkg.name, [])
+            data['depends_on'] = rosdoc_index.reverse_deps.get(pkg.name, [])
 
-            if rosdoc_tag_index.has_metapackages(pkg.name):
-                data['metapackages'] = rosdoc_tag_index.get_metapackages(
-                    pkg.name)
+            if pkg.name in rosdoc_index.metapackage_deps:
+                data['metapackages'] = rosdoc_index.metapackage_deps[pkg.name]
 
             if pkg.name in package_names_with_changelogs:
                 data['has_changelog_rst'] = True
@@ -285,6 +294,7 @@ def main(argv=sys.argv[1:]):
                 args.rosdistro_name, args.doc_build_name, args.repository_name,
                 args.os_name, args.os_code_name, args.arch)
 
+            # TODO
             # if pkg_release_jobs:
             #     data['release_jobs'] = pkg_release_jobs
             # if pkg_devel_jobs:
@@ -308,10 +318,9 @@ def main(argv=sys.argv[1:]):
 
             build_types = [
                 e.content for e in pkg.exports if e.tagname == 'build_type']
-            if pkg.is_metapackage() or \
-                    (build_types and build_types[0] == 'cmake'):
-                print(("Ignore metapackage or plain CMake package '%s' " +
-                      "during build") % pkg.name)
+            if build_types and build_types[0] == 'cmake':
+                print("Ignore plain CMake package '%s' during build" %
+                      pkg.name)
                 catkin_ignore_file = os.path.join(
                     abs_pkg_path, 'CATKIN_IGNORE')
                 with open(catkin_ignore_file, 'w'):

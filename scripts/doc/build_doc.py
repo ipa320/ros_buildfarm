@@ -11,6 +11,7 @@ from ros_buildfarm.catkin_workspace import call_catkin_make_isolated
 from ros_buildfarm.catkin_workspace import clean_workspace
 from ros_buildfarm.catkin_workspace import ensure_workspace_exists
 from ros_buildfarm.common import Scope
+from ros_buildfarm.rosdoc_index import RosdocIndex
 
 
 def main(argv=sys.argv[1:]):
@@ -38,9 +39,9 @@ def main(argv=sys.argv[1:]):
         required=True,
         help='The root path of the rosdoc_lite repository')
     parser.add_argument(
-        '--rosdoc-tag-index-dir',
+        '--rosdoc-index-dir',
         required=True,
-        help='The root path of the rosdoc_tag_index repository')
+        help='The root path of the rosdoc_index folder')
     parser.add_argument(
         'pkg_tuples',
         nargs='*',
@@ -60,6 +61,13 @@ def main(argv=sys.argv[1:]):
     if rc:
         return rc
 
+    rosdoc_index = RosdocIndex([
+        os.path.join(args.output_dir, args.rosdistro_name),
+        os.path.join(args.rosdoc_index_dir, args.rosdistro_name)])
+
+    sys.path.insert(0, os.path.join(args.rosdoc_lite_dir, 'src'))
+    from rosdoc_lite import get_generator_output_folders
+
     source_space = os.path.join(args.workspace_root, 'src')
     for pkg_tuple in args.pkg_tuples:
         pkg_name, pkg_subfolder = pkg_tuple.split(':', 1)
@@ -67,8 +75,8 @@ def main(argv=sys.argv[1:]):
             pkg_path = os.path.join(source_space, pkg_subfolder)
 
             pkg_doc_path = os.path.join(args.output_dir, 'api_rosdoc', pkg_name)
-            pkg_tags_path = os.path.join(
-                args.output_dir, 'tags', '%s.tag' % pkg_name)
+            pkg_tag_path = os.path.join(
+                args.output_dir, 'symbols', '%s.tag' % pkg_name)
 
             source_cmd = [
                 '.',
@@ -78,7 +86,7 @@ def main(argv=sys.argv[1:]):
                 os.path.join(args.rosdoc_lite_dir, 'scripts', 'rosdoc_lite'),
                 pkg_path,
                 '-o', pkg_doc_path,
-                '-g', pkg_tags_path,
+                '-g', pkg_tag_path,
                 '-t', os.path.join(
                     args.output_dir, 'rosdoc_tags', pkg_name, 'rosdoc_tags.yaml'),
             ]
@@ -95,6 +103,31 @@ def main(argv=sys.argv[1:]):
             if pkg_rc:
                 rc = pkg_rc
 
+            # only if rosdoc runs generates a symbol file
+            # create the corresponding location file
+            if os.path.exists(pkg_tag_path):
+                data = {
+                    'docs_url': '../../../api/%s/html' % pkg_name,
+                    'location': '%s/symbols/%s.tag' %
+                    (args.rosdistro_name, pkg_name),
+                    'package': pkg_name,
+                }
+
+                # fetch generator specific output folders from rosdoc_lite
+                output_folders = get_generator_output_folders(pkg_path)
+                for generator, output_folder in output_folders.items():
+                    data['%s_output_folder' % generator] = output_folder
+
+                rosdoc_index.locations[pkg_name] = [data]
+
+            #
+
+            # add_canonical_link(
+            #     pkg_doc_path,
+            #     "%s/%s/api/%s" % (homepage, ros_distro, package))
+
+            #
+
             # merge manifest.yaml files
             rosdoc_manifest_yaml_file = os.path.join(
                 pkg_doc_path, 'manifest.yaml')
@@ -107,6 +140,9 @@ def main(argv=sys.argv[1:]):
             rosdoc_data.update(job_data)
             with open(rosdoc_manifest_yaml_file, 'w') as h:
                 yaml.safe_dump(rosdoc_data, h, default_flow_style=False)
+
+    rosdoc_index.write_modified_data(
+        args.output_dir, ['locations'])
 
     return rc
 

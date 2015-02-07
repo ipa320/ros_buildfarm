@@ -67,15 +67,21 @@
         'git -C ros_buildfarm log -n 1',
         'echo "# END SECTION"',
         '',
-        'echo "# BEGIN SECTION: rsync rosdoc_tag_index to slave"',
-        'rm -fr rosdoc_tag_index',
-        'rsync -e "ssh -o StrictHostKeyChecking=no" -qr --include="%s/***" jenkins-slave@repo:/var/repos/rosdoc_tag_index/ $WORKSPACE/rosdoc_tag_index' % rosdistro_name,
-        'echo "# END SECTION"',
-        '',
         'echo "# BEGIN SECTION: Clone rosdoc_lite"',
         'rm -fr rosdoc_lite',
         'git clone https://github.com/ros-infrastructure/rosdoc_lite.git rosdoc_lite',
         'git -C rosdoc_lite log -n 1',
+        'echo "# END SECTION"',
+        '',
+        'echo "# BEGIN SECTION: rsync (most of) the rosdoc_index to slave"',
+        'rm -fr rosdoc_index',
+        '# must pass if the rosdistro specific folder does not exist yet',
+        'rsync -e "ssh -o StrictHostKeyChecking=no" -q' +
+        ' --include="%/deps/*"' % rosdistro_name +
+        ' --include="%/hashes/%s"' % doc_repo_spec.name +
+        ' --include="%/locations/*"' % rosdistro_name +
+        ' --include="%/metapackages/*"' % rosdistro_name +
+        ' jenkins-slave@repo:/var/repos/docs/ $WORKSPACE/rosdoc_index',
         'echo "# END SECTION"',
     ]),
 ))@
@@ -87,9 +93,7 @@
     'builder_shell',
     script='\n'.join([
         'rm -fr $WORKSPACE/docker_generating_docker',
-        'rm -fr $WORKSPACE/generated_documentation',
         'mkdir -p $WORKSPACE/docker_generating_docker',
-        'mkdir -p $WORKSPACE/generated_documentation',
         '',
         '# monitor all subprocesses and enforce termination',
         'python3 -u $WORKSPACE/ros_buildfarm/scripts/subprocess_reaper.py $$ --cid-file $WORKSPACE/docker_generating_docker/docker.cid > $WORKSPACE/docker_generating_docker/subprocess_reaper.log 2>&1 &',
@@ -129,9 +133,9 @@
         ' -e=HOME=/home/buildfarm' +
         ' -v $WORKSPACE/ros_buildfarm:/tmp/ros_buildfarm:ro' +
         ' -v $WORKSPACE/rosdoc_lite:/tmp/rosdoc_lite:ro' +
+        ' -v $WORKSPACE/rosdoc_index:/tmp/rosdoc_index:ro' +
         ' -v $WORKSPACE/catkin_workspace:/tmp/catkin_workspace' +
         ' -v $WORKSPACE/generated_documentation:/tmp/generated_documentation' +
-        ' -v $WORKSPACE/rosdoc_tag_index:/tmp/rosdoc_tag_index' +
         ' -v $WORKSPACE/docker_doc:/tmp/docker_doc' +
         ' doc_task_generation__%s_%s' % (rosdistro_name, doc_repo_spec.name),
         'echo "# END SECTION"',
@@ -171,28 +175,29 @@
     'builder_publish-over-ssh',
     config_name='docs',
     remote_directory=rosdistro_name,
-    source_files=['generated_documentation/api/**/stamp', 'generated_documentation/changelogs/**/*.html', 'generated_documentation/tags/*.tag'],
+    source_files=[
+        'generated_documentation/api/**/stamp',
+        'generated_documentation/changelogs/**/*.html',
+        'generated_documentation/symbols/*.tag',
+
+        'generated_documentation/deps/*',
+        'generated_documentation/hashes/*',
+        'generated_documentation/locations/*',
+        'generated_documentation/metapackages/*',
+    ],
     remove_prefix='generated_documentation',
 ))@
 @(SNIPPET(
     'builder_shell',
     script='\n'.join([
         'if [ -d "$WORKSPACE/generated_documentation/api_rosdoc" ]; then',
-        '  echo "# BEGIN SECTION: rsync API documentation"',
+        '  echo "# BEGIN SECTION: rsync API documentation to server"',
         '  cd $WORKSPACE/generated_documentation/api_rosdoc',
         '  for pkg_name in $(find . -maxdepth 1 -mindepth 1 -type d); do',
-        '    rsync -e "ssh -o StrictHostKeyChecking=no" -qr --delete $pkg_name jenkins-slave@repo:/var/repos/docs/%s/api' % rosdistro_name,
+        '    rsync -e "ssh -o StrictHostKeyChecking=no" -r --delete $pkg_name jenkins-slave@repo:/var/repos/docs/%s/api' % rosdistro_name,
         '  done',
         '  echo "# END SECTION"',
         'fi',
-    ]),
-))@
-@(SNIPPET(
-    'builder_shell',
-    script='\n'.join([
-        'echo "# BEGIN SECTION: rsync rosdoc_tag_index to server"',
-        'rsync -e "ssh -o StrictHostKeyChecking=no" -qr $WORKSPACE/rosdoc_tag_index/%s jenkins-slave@repo:/var/repos/rosdoc_tag_index/' % rosdistro_name,
-        'echo "# END SECTION"',
     ]),
 ))@
   </builders>

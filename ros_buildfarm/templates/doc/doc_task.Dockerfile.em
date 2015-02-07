@@ -74,7 +74,7 @@ cmd = 'PYTHONPATH=/tmp/ros_buildfarm:$PYTHONPATH python3 -u' + \
     ' --arch ' + arch + \
     ' --workspace-root /tmp/catkin_workspace' + \
     ' --rosdoc-lite-dir /tmp/rosdoc_lite' + \
-    ' --rosdoc-tag-index /tmp/rosdoc_tag_index' + \
+    ' --rosdoc-index /tmp/rosdoc_index' + \
     ' --output-dir /tmp/generated_documentation' + \
     ' ' + ' '.join([
         '%s:%s' % (pkg.name, pkg_path) for pkg_path, pkg in ordered_pkg_tuples])

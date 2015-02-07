@@ -50,8 +50,8 @@ cmds = [
     ' --rosdistro-name ' + rosdistro_name + \
     ' ' + doc_build_name + \
     ' --workspace-root /tmp/catkin_workspace' + \
-    ' --rosdoc-lite-dir /tmp/rosdoc_tag_index' + \
-    ' --rosdoc-tag-index-dir /tmp/rosdoc_tag_index' + \
+    ' --rosdoc-lite-dir /tmp/rosdoc_lite' + \
+    ' --rosdoc-index-dir /tmp/rosdoc_index' + \
     ' ' + repository_name + \
     ' --os-name ' + os_name + \
     ' --os-code-name ' + os_code_name + \
