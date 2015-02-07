@@ -74,13 +74,15 @@ def main(argv=sys.argv[1:]):
         with Scope('SUBSECTION', 'rosdoc_lite - %s' % pkg_name):
             pkg_path = os.path.join(source_space, pkg_subfolder)
 
-            pkg_doc_path = os.path.join(args.output_dir, 'api_rosdoc', pkg_name)
+            pkg_doc_path = os.path.join(
+                args.output_dir, 'api_rosdoc', pkg_name)
             pkg_tag_path = os.path.join(
                 args.output_dir, 'symbols', '%s.tag' % pkg_name)
 
             source_cmd = [
                 '.',
-                os.path.join(args.workspace_root, 'install_isolated', 'setup.sh'),
+                os.path.join(
+                    args.workspace_root, 'install_isolated', 'setup.sh'),
             ]
             rosdoc_lite_cmd = [
                 os.path.join(args.rosdoc_lite_dir, 'scripts', 'rosdoc_lite'),
@@ -88,7 +90,8 @@ def main(argv=sys.argv[1:]):
                 '-o', pkg_doc_path,
                 '-g', pkg_tag_path,
                 '-t', os.path.join(
-                    args.output_dir, 'rosdoc_tags', pkg_name, 'rosdoc_tags.yaml'),
+                    args.output_dir, 'rosdoc_tags', pkg_name,
+                    'rosdoc_tags.yaml'),
             ]
             print("Invoking `rosdoc_lite` for package '%s': %s" %
                   (pkg_name, ' '.join(rosdoc_lite_cmd)))

@@ -78,7 +78,7 @@ class RosdocIndex(object):
                     with open(os.path.join(path, key), 'r') as h:
                         data[key] = yaml.load(h)
             maps.append(data)
-        return ChainMap(maps)
+        return ChainMap(*maps)
 
     # write a dict to files where is the filenames equal the keys
     def _write_folder(self, basepath, folder_name, data):

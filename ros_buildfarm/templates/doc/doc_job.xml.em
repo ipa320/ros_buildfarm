@@ -77,10 +77,10 @@
         'rm -fr rosdoc_index',
         '# must pass if the rosdistro specific folder does not exist yet',
         'rsync -e "ssh -o StrictHostKeyChecking=no" -q' +
-        ' --include="%/deps/*"' % rosdistro_name +
-        ' --include="%/hashes/%s"' % doc_repo_spec.name +
-        ' --include="%/locations/*"' % rosdistro_name +
-        ' --include="%/metapackages/*"' % rosdistro_name +
+        ' --include="%s/deps/*"' % rosdistro_name +
+        ' --include="%s/hashes/%s"' % (rosdistro_name, doc_repo_spec.name) +
+        ' --include="%s/locations/*"' % rosdistro_name +
+        ' --include="%s/metapackages/*"' % rosdistro_name +
         ' jenkins-slave@repo:/var/repos/docs/ $WORKSPACE/rosdoc_index',
         'echo "# END SECTION"',
     ]),
@@ -93,7 +93,9 @@
     'builder_shell',
     script='\n'.join([
         'rm -fr $WORKSPACE/docker_generating_docker',
+        'rm -fr $WORKSPACE/generated_documentation',
         'mkdir -p $WORKSPACE/docker_generating_docker',
+        'mkdir -p $WORKSPACE/generated_documentation',
         '',
         '# monitor all subprocesses and enforce termination',
         'python3 -u $WORKSPACE/ros_buildfarm/scripts/subprocess_reaper.py $$ --cid-file $WORKSPACE/docker_generating_docker/docker.cid > $WORKSPACE/docker_generating_docker/subprocess_reaper.log 2>&1 &',
