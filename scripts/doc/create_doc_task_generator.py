@@ -154,9 +154,12 @@ def main(argv=sys.argv[1:]):
             depends = _get_build_run_doc_dependencies(pkg)
             ros_dependency_names = sorted(set([
                 d.name for d in depends if d.name in valid_package_names]))
-
+            print("Updating dependendencies for package '%s'" % pkg.name)
             rosdoc_index.set_forward_deps(pkg.name, ros_dependency_names)
-            if not pkg.is_metapackage():
+            if pkg.is_metapackage():
+                print("Updating dependendencies for metapackage '%s'" %
+                      pkg.name)
+            else:
                 ros_dependency_names = None
             rosdoc_index.set_metapackage_deps(
                 pkg.name, ros_dependency_names)
@@ -197,6 +200,7 @@ def main(argv=sys.argv[1:]):
     # create location files
     with Scope('SUBSECTION', 'create location files'):
         for pkg in pkgs.values():
+            print("Creating location file for package '%s'" % pkg.name)
             data = {
                 'docs_url': '../../../api/%s/html' % pkg.name,
                 'location': 'file://%s' % os.path.join(
@@ -224,6 +228,8 @@ def main(argv=sys.argv[1:]):
                     print("- skipping not existing location file of " +
                           "dependency '%s'" % dep_name)
                     continue
+                print("- including location files of dependency '%s'" %
+                      dep_name)
                 dep_locations = rosdoc_index.locations[dep_name]
                 if dep_locations:
                     for dep_location in dep_locations:
@@ -356,6 +362,7 @@ def main(argv=sys.argv[1:]):
         'python-rospkg',
         'python-sphinx',
         'python-yaml',
+        'ros-%s-genmsg' $ args.rosdistro_name,
     ]
     if 'catkin' not in pkg_names:
         debian_pkg_names.append(
