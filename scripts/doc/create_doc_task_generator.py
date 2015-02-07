@@ -356,7 +356,6 @@ def main(argv=sys.argv[1:]):
         'python-rospkg',
         'python-sphinx',
         'python-yaml',
-        'ros-%s-genmsg' % args.rosdistro_name,  # TODO remove
     ]
     if 'catkin' not in pkg_names:
         debian_pkg_names.append(

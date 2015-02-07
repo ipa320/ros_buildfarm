@@ -76,11 +76,14 @@
         'echo "# BEGIN SECTION: rsync (most of) the rosdoc_index to slave"',
         'rm -fr rosdoc_index',
         '# must pass if the rosdistro specific folder does not exist yet',
-        'rsync -e "ssh -o StrictHostKeyChecking=no" -q' +
+        'rsync -e "ssh -o StrictHostKeyChecking=no"' +
+        ' --prune-empty-dirs --quiet --recursive' +
+        ' --include="+ */"' +
         ' --include="%s/deps/*"' % rosdistro_name +
         ' --include="%s/hashes/%s"' % (rosdistro_name, doc_repo_spec.name) +
         ' --include="%s/locations/*"' % rosdistro_name +
         ' --include="%s/metapackages/*"' % rosdistro_name +
+        ' --exclude="- *"' +
         ' jenkins-slave@repo:/var/repos/docs/ $WORKSPACE/rosdoc_index',
         'echo "# END SECTION"',
     ]),
