@@ -65,8 +65,8 @@ def main(argv=sys.argv[1:]):
         os.path.join(args.output_dir, args.rosdistro_name),
         os.path.join(args.rosdoc_index_dir, args.rosdistro_name)])
 
-    sys.path.insert(0, os.path.join(args.rosdoc_lite_dir, 'src'))
-    from rosdoc_lite import get_generator_output_folders
+    # sys.path.insert(0, os.path.join(args.rosdoc_lite_dir, 'src'))
+    # from rosdoc_lite import get_generator_output_folders
 
     source_space = os.path.join(args.workspace_root, 'src')
     for pkg_tuple in args.pkg_tuples:
@@ -117,9 +117,9 @@ def main(argv=sys.argv[1:]):
                 }
 
                 # fetch generator specific output folders from rosdoc_lite
-                output_folders = get_generator_output_folders(pkg_path)
-                for generator, output_folder in output_folders.items():
-                    data['%s_output_folder' % generator] = output_folder
+                # output_folders = get_generator_output_folders(pkg_path)
+                # for generator, output_folder in output_folders.items():
+                #     data['%s_output_folder' % generator] = output_folder
 
                 rosdoc_index.locations[pkg_name] = [data]
 
@@ -148,6 +148,36 @@ def main(argv=sys.argv[1:]):
         args.output_dir, ['locations'])
 
     return rc
+
+
+# def _load_rosdoc_config(path, manifest):
+#     #load in any external config files
+#     rd_config = {}
+#     exported_configs = manifest.get_export('rosdoc', 'config')
+#     if exported_configs:
+#         #This just takes the last listed config export
+#         for exported_config in manifest.get_export('rosdoc', 'config'):
+#             try:
+#                 exported_config = exported_config.replace('${prefix}', path)
+#                 config_path = os.path.join(path, exported_config)
+#                 with open(config_path, 'r') as config_file:
+#                     rd_config = yaml.load(config_file)
+#             except Exception as e:
+#                 sys.stderr.write("ERROR: unable to load rosdoc config file [%s]: %s\n" % (config_path, str(e)))
+#     #we'll check if a 'rosdoc.yaml' file exists in the directory
+#     elif os.path.isfile(os.path.join(path, 'rosdoc.yaml')):
+#         with open(os.path.join(path, 'rosdoc.yaml'), 'r') as config_file:
+#             rd_config = yaml.load(config_file)
+
+#     return rd_config
+
+    # data = {}
+    # for builder, params in build_params.items():
+    #     if 'output_dir' in params:
+    #         output_dir = params['output_dir']
+    #         if output_dir != '.':
+    #             data[builder] = output_dir
+    # return data
 
 
 if __name__ == '__main__':
